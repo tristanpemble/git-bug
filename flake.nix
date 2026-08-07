@@ -25,10 +25,9 @@
             packages = with pkgs; [
               delve
               git
-              go
+              go_1_25
               gopls
               gnumake
-              nodejs
             ];
           };
         }

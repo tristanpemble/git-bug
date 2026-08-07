@@ -16,6 +16,20 @@ changes.
 Original git-bug source is copyright Michael Muré and other upstream
 contributors. Fork modifications are copyright their respective authors.
 
+## Build from source
+
+The supported toolchain is Go 1.25, Git, and GNU Make. Nix users can enter the
+locked development environment and build and test the project directly:
+
+```sh
+nix develop
+make build
+go test ./...
+```
+
+Without Nix, install the same tools and run the final two commands from the
+repository root.
+
 ## License
 
 Unless a file states otherwise, the complete work is distributed under the
