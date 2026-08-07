@@ -9,11 +9,9 @@ coverage.txt
 .idea/
 .git_bak*
 
-# nix and direnv related tooling
-.envrc
+# local development state
 .envrc.local
 /.direnv/
-!/.envrc
 
 # nix output directory from `nix build` commands
 /result

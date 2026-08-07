@@ -11,13 +11,6 @@ import (
 	"github.com/git-bug/git-bug/repository"
 )
 
-const moreConfigText = `
-NOTE: There are a few optional configuration values that you can additionally
-set in your git configuration to influence the behavior of the bridge. Please
-see the notes at:
-https://github.com/git-bug/git-bug/blob/trunk/doc/jira_bridge.md
-`
-
 const credTypeText = `
 JIRA has recently altered it's authentication strategies. Servers deployed
 prior to October 1st 2019 must use "SESSION" authentication, whereby the REST
@@ -153,7 +146,6 @@ func (j *Jira) Configure(repo *cache.RepoCache, params core.BridgeParams, intera
 		return nil, err
 	}
 
-	fmt.Print(moreConfigText)
 	return conf, nil
 }
 

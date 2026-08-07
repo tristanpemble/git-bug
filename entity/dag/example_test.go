@@ -12,8 +12,7 @@ import (
 	"github.com/git-bug/git-bug/repository"
 )
 
-// Note: you can find explanations about the underlying data model here:
-// https://github.com/git-bug/git-bug/blob/trunk/doc/design/data-model.md
+// See doc/design/data-model.md for the underlying data model.
 
 // This file explains how to define a replicated data structure, stored in and using git as a medium for
 // synchronisation. To do this, we'll use the entity/dag package, which will do all the complex handling.

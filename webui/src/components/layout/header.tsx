@@ -1,12 +1,11 @@
 // Sticky top navigation bar. Adapts based on whether we're on the repo picker
 // page (root) or inside a specific repo:
-//   - Root: shows logo only, no Code/Issues links
+//   - Root: shows the project link, no Code/Issues links
 //   - Repo: shows Code + Issues nav links scoped to the current repo slug
 
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import { Check, Contrast, Plus } from "lucide-react";
 
-import Logo from "@/assets/logo.svg?react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -26,9 +25,8 @@ export function Header() {
   return (
     <header className="border-border bg-background/95 sticky top-0 z-50 border-b backdrop-blur">
       <div className="mx-auto flex h-14 max-w-screen-xl items-center gap-6 px-4">
-        {/* Logo always goes to the repo picker root */}
-        <Link to="/" className="text-foreground flex items-center gap-2 font-semibold">
-          <Logo className="size-5" />
+        {/* Project link always goes to the repo picker root */}
+        <Link to="/" className="text-foreground font-semibold">
           <span>git-bug</span>
         </Link>
 

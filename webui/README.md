@@ -4,20 +4,26 @@ Web interface for git-bug. Built with Vite 8 + React 19 + TypeScript 6 + Tailwin
 
 ## Quickstart
 
-You need two processes running:
+Enter the Nix development environment from the repository root:
+
+```bash
+nix develop
+```
+
+Then start two processes:
 
 ```bash
 # 1. Go backend (from repo root)
 go run . webui --no-open --port 3000
 
 # 2. Vite dev server (from this directory)
-pnpm install
-pnpm dev
+corepack pnpm install
+corepack pnpm dev
 ```
 
 Open http://localhost:5173. Vite proxies `/graphql`, `/gitfile`, and `/upload` to the Go server on port 3000.
 
-Node 22 is required. If you use asdf, `.tool-versions` pins the right version automatically.
+The Nix development environment supplies compatible Node and Corepack versions.
 
 ## Routes
 
@@ -58,7 +64,6 @@ src/
 │   ├── content/        # Markdown renderer
 │   └── layout/         # Header + Shell
 ├── __generated__/      # Generated typed hooks — do not edit
-├── assets/             # Logo SVG
 ├── lib/                # apollo.ts, auth.tsx, theme.tsx, utils.ts, query-utils.ts, shiki.ts
 ├── routeTree.gen.ts    # Auto-generated route tree — do not edit
 └── App.tsx             # Router instance + context
@@ -107,7 +112,7 @@ import { LabelBadge } from "@/components/shared/label-badge";
 Codegen scans all `src/**/*.{ts,tsx}` files for `graphql()` calls. After changing any fragment or query, regenerate typed hooks:
 
 ```bash
-pnpm codegen
+corepack pnpm codegen
 ```
 
 ## Routing
@@ -154,8 +159,8 @@ Search params that affect data loading use `loaderDeps` so the loader re-runs wh
 [Storybook 10](https://storybook.js.org/) is set up for component development and testing:
 
 ```bash
-pnpm storybook        # Dev server on http://localhost:6006
-pnpm build-storybook  # Production build
+corepack pnpm storybook        # Dev server on http://localhost:6006
+corepack pnpm build-storybook  # Production build
 ```
 
 Every presentational component has stories. Stories use the CSF3 format with `satisfies Meta<typeof Component>` for full type inference. Mock data is typed against GraphQL fragment types.
@@ -170,10 +175,10 @@ Tests run via [Vitest 4](https://vitest.dev/) with two projects:
 | **snapshot**  | happy-dom             | DOM snapshot tests via portable stories API                                        |
 
 ```bash
-pnpm test                          # Run all tests
-pnpm test -- --project=storybook   # Storybook tests only
-pnpm test -- --project=snapshot    # Snapshot tests only
-pnpm test -- -u                    # Update snapshots
+corepack pnpm test                          # Run all tests
+corepack pnpm test -- --project=storybook   # Storybook tests only
+corepack pnpm test -- --project=snapshot    # Snapshot tests only
+corepack pnpm test -- -u                    # Update snapshots
 ```
 
 ### Adding tests
@@ -220,14 +225,14 @@ export const MyInteraction: Story = {
 | [@tsconfig/bases](https://github.com/tsconfig/bases)                           | Shared tsconfig presets (vite-react + strictest)         |
 
 ```bash
-pnpm lint        # oxlint (type-aware, 0 warnings target)
-pnpm lint:fix    # oxlint with auto-fix
-pnpm fmt         # oxfmt format
-pnpm fmt:check   # oxfmt check only
-pnpm check       # lint + format check
-pnpm test        # vitest (all projects)
-pnpm storybook   # storybook dev server
-pnpm codegen     # regenerate GraphQL types
+corepack pnpm lint        # oxlint (type-aware, 0 warnings target)
+corepack pnpm lint:fix    # oxlint with auto-fix
+corepack pnpm fmt         # oxfmt format
+corepack pnpm fmt:check   # oxfmt check only
+corepack pnpm check       # lint + format check
+corepack pnpm test        # vitest (all projects)
+corepack pnpm storybook   # storybook dev server
+corepack pnpm codegen     # regenerate GraphQL types
 ```
 
 ## Auth
@@ -239,7 +244,7 @@ Currently local-only: the server injects the git config identity for every reque
 The Go binary embeds the compiled frontend via `//go:embed all:dist` in `webui/handler.go`:
 
 ```bash
-pnpm build           # outputs to webui/dist/
+corepack pnpm build  # outputs to webui/dist/
 cd .. && go build .  # embeds dist/ into the binary
 ```
 

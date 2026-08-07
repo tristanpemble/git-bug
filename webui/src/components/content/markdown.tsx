@@ -34,7 +34,7 @@ const sanitizeSchema = {
 export interface RepoContext {
   repo: string;
   ref: string;
-  /** Directory containing the markdown file (e.g. "doc" for doc/README.md). */
+  /** Directory containing the markdown file (e.g. "notes" for notes/README.md). */
   basePath: string;
 }
 

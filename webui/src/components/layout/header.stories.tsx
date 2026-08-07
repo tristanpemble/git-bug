@@ -1,5 +1,5 @@
-// Sticky navigation bar. Two states: root page (logo only) and repo page
-// (logo + Code/Issues nav + New issue button + avatar).
+// Sticky navigation bar. Two states: root page (project link only) and repo page
+// (project link + Code/Issues nav + New issue button + avatar).
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { withApollo, withRepoRouter, withRouter } from "@/../.storybook/decorators";
@@ -14,7 +14,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// At "/" — no repo in URL, only logo and theme picker shown.
+// At "/" — no repo in URL, only the project link and theme picker shown.
 export const RootPage: Story = {
   decorators: [withRouter, withApollo],
 };
