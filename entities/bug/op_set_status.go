@@ -68,9 +68,6 @@ func (s SetStatusTimelineItem) CombinedId() entity.CombinedId {
 	return s.combinedId
 }
 
-// IsAuthored is a sign post-method for gqlgen, to mark compliance to an interface.
-func (s *SetStatusTimelineItem) IsAuthored() {}
-
 // Open is a convenience function to change a bugs state to Open
 func Open(b Interface, author identity.Interface, unixTime int64, metadata map[string]string) (*SetStatusOperation, error) {
 	op := NewSetStatusOp(author, unixTime, common.OpenStatus)

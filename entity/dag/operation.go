@@ -203,9 +203,6 @@ func (base *OpBase) Validate(op Operation, opType OperationType) error {
 	return nil
 }
 
-// IsAuthored is a sign post method for gqlgen
-func (base *OpBase) IsAuthored() {}
-
 // Author return author identity
 func (base *OpBase) Author() identity.Interface {
 	return base.author

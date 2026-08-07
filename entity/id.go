@@ -3,10 +3,7 @@ package entity
 import (
 	"crypto/sha256"
 	"fmt"
-	"io"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // sha-256
@@ -40,27 +37,6 @@ func (i Id) Human() string {
 
 func (i Id) HasPrefix(prefix string) bool {
 	return strings.HasPrefix(string(i), prefix)
-}
-
-// UnmarshalGQL implement the Unmarshaler interface for gqlgen
-func (i *Id) UnmarshalGQL(v interface{}) error {
-	_, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("IDs must be strings")
-	}
-
-	*i = v.(Id)
-
-	if err := i.Validate(); err != nil {
-		return errors.Wrap(err, "invalid ID")
-	}
-
-	return nil
-}
-
-// MarshalGQL implement the Marshaler interface for gqlgen
-func (i Id) MarshalGQL(w io.Writer) {
-	_, _ = w.Write([]byte(`"` + i.String() + `"`))
 }
 
 // Validate tell if the Id is valid

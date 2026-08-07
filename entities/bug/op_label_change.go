@@ -2,9 +2,7 @@ package bug
 
 import (
 	"fmt"
-	"io"
 	"sort"
-	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -116,9 +114,6 @@ type LabelChangeTimelineItem struct {
 func (l LabelChangeTimelineItem) CombinedId() entity.CombinedId {
 	return l.combinedId
 }
-
-// IsAuthored is a sign post-method for gqlgen, to mark compliance to an interface.
-func (l *LabelChangeTimelineItem) IsAuthored() {}
 
 // ChangeLabels is a convenience function to change labels on a bug
 func ChangeLabels(b Interface, author identity.Interface, unixTime int64, add, remove []string, metadata map[string]string) ([]LabelChangeResult, *LabelChangeOperation, error) {
@@ -232,45 +227,6 @@ const (
 	LabelChangeAlreadySet
 	LabelChangeDoesntExist
 )
-
-func (l LabelChangeStatus) MarshalGQL(w io.Writer) {
-	switch l {
-	case LabelChangeAdded:
-		_, _ = w.Write([]byte(strconv.Quote("ADDED")))
-	case LabelChangeRemoved:
-		_, _ = w.Write([]byte(strconv.Quote("REMOVED")))
-	case LabelChangeDuplicateInOp:
-		_, _ = w.Write([]byte(strconv.Quote("DUPLICATE_IN_OP")))
-	case LabelChangeAlreadySet:
-		_, _ = w.Write([]byte(strconv.Quote("ALREADY_EXIST")))
-	case LabelChangeDoesntExist:
-		_, _ = w.Write([]byte(strconv.Quote("DOESNT_EXIST")))
-	default:
-		panic("missing case")
-	}
-}
-
-func (l *LabelChangeStatus) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-	switch str {
-	case "ADDED":
-		*l = LabelChangeAdded
-	case "REMOVED":
-		*l = LabelChangeRemoved
-	case "DUPLICATE_IN_OP":
-		*l = LabelChangeDuplicateInOp
-	case "ALREADY_EXIST":
-		*l = LabelChangeAlreadySet
-	case "DOESNT_EXIST":
-		*l = LabelChangeDoesntExist
-	default:
-		return fmt.Errorf("%s is not a valid LabelChangeStatus", str)
-	}
-	return nil
-}
 
 type LabelChangeResult struct {
 	Label  common.Label

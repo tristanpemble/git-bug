@@ -9,23 +9,19 @@ LDFLAGS:=-X main.version="${TAG}"
 
 all: build
 
-.PHONY: build-webui
-build-webui:
-	cd webui && corepack pnpm install && corepack pnpm run build
-
 .PHONY: build
-build: build-webui
+build:
 	go generate
 	go build -ldflags "$(LDFLAGS)" .
 
 # produce a debugger-friendly build
 .PHONY: build/debug
-build/debug: build-webui
+build/debug:
 	go generate
 	go build -ldflags "$(LDFLAGS)" -gcflags=all="-N -l" .
 
 .PHONY: install
-install: build-webui
+install:
 	go generate
 	go install -ldflags "$(LDFLAGS)" .
 

@@ -79,9 +79,6 @@ type AddCommentTimelineItem struct {
 	CommentTimelineItem
 }
 
-// IsAuthored is a sign post-method for gqlgen, to mark compliance to an interface.
-func (a *AddCommentTimelineItem) IsAuthored() {}
-
 // AddComment is a convenience function to add a comment to a bug
 func AddComment(b Interface, author identity.Interface, unixTime int64, message string, files []repository.Hash, metadata map[string]string) (entity.CombinedId, *AddCommentOperation, error) {
 	op := NewAddCommentOp(author, unixTime, message, files)

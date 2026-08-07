@@ -1,9 +1,7 @@
 package repository
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"strconv"
 	"time"
 )
@@ -18,41 +16,6 @@ const (
 	ChangeStatusRenamed  ChangeStatus = "renamed"
 )
 
-func (s ChangeStatus) MarshalGQL(w io.Writer) {
-	switch s {
-	case ChangeStatusAdded:
-		fmt.Fprint(w, strconv.Quote("ADDED"))
-	case ChangeStatusModified:
-		fmt.Fprint(w, strconv.Quote("MODIFIED"))
-	case ChangeStatusDeleted:
-		fmt.Fprint(w, strconv.Quote("DELETED"))
-	case ChangeStatusRenamed:
-		fmt.Fprint(w, strconv.Quote("RENAMED"))
-	default:
-		panic(fmt.Sprintf("unknown ChangeStatus value %q", string(s)))
-	}
-}
-
-func (s *ChangeStatus) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-	switch str {
-	case "ADDED":
-		*s = ChangeStatusAdded
-	case "MODIFIED":
-		*s = ChangeStatusModified
-	case "DELETED":
-		*s = ChangeStatusDeleted
-	case "RENAMED":
-		*s = ChangeStatusRenamed
-	default:
-		return fmt.Errorf("%q is not a valid ChangeStatus", str)
-	}
-	return nil
-}
-
 // DiffLineType is the role of a line within a unified diff hunk.
 type DiffLineType string
 
@@ -61,37 +24,6 @@ const (
 	DiffLineAdded   DiffLineType = "added"
 	DiffLineDeleted DiffLineType = "deleted"
 )
-
-func (t DiffLineType) MarshalGQL(w io.Writer) {
-	switch t {
-	case DiffLineContext:
-		fmt.Fprint(w, strconv.Quote("CONTEXT"))
-	case DiffLineAdded:
-		fmt.Fprint(w, strconv.Quote("ADDED"))
-	case DiffLineDeleted:
-		fmt.Fprint(w, strconv.Quote("DELETED"))
-	default:
-		panic(fmt.Sprintf("unknown DiffLineType value %q", string(t)))
-	}
-}
-
-func (t *DiffLineType) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-	switch str {
-	case "CONTEXT":
-		*t = DiffLineContext
-	case "ADDED":
-		*t = DiffLineAdded
-	case "DELETED":
-		*t = DiffLineDeleted
-	default:
-		return fmt.Errorf("%q is not a valid DiffLineType", str)
-	}
-	return nil
-}
 
 // GitRefType is the kind of git reference: a branch, a tag, or a detached commit.
 type GitRefType string
@@ -115,34 +47,21 @@ func (e GitRefType) IsValid() bool {
 
 func (e GitRefType) String() string { return string(e) }
 
-func (e *GitRefType) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-	*e = GitRefType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid GitRefType", str)
-	}
-	return nil
-}
-
-func (e GitRefType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 func (e *GitRefType) UnmarshalJSON(b []byte) error {
 	s, err := strconv.Unquote(string(b))
 	if err != nil {
 		return err
 	}
-	return e.UnmarshalGQL(s)
+	value := GitRefType(s)
+	if !value.IsValid() {
+		return fmt.Errorf("%s is not a valid GitRefType", s)
+	}
+	*e = value
+	return nil
 }
 
 func (e GitRefType) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
+	return []byte(strconv.Quote(e.String())), nil
 }
 
 type RefMeta struct {

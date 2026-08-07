@@ -68,7 +68,6 @@ Read-only commands do not require an identity.
 	addCmdWithGroup(newLabelCommand(env), entityGroup)
 
 	addCmdWithGroup(newTermUICommand(env), uiGroup)
-	addCmdWithGroup(newWebUICommand(env), uiGroup)
 
 	addCmdWithGroup(newPullCommand(env), remoteGroup)
 	addCmdWithGroup(newPushCommand(env), remoteGroup)

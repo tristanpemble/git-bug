@@ -2,10 +2,7 @@ package entity
 
 import (
 	"fmt"
-	"io"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 const UnsetCombinedId = CombinedId("unset")
@@ -28,27 +25,6 @@ func (ci CombinedId) Human() string {
 
 func (ci CombinedId) HasPrefix(prefix string) bool {
 	return strings.HasPrefix(string(ci), prefix)
-}
-
-// UnmarshalGQL implement the Unmarshaler interface for gqlgen
-func (ci *CombinedId) UnmarshalGQL(v interface{}) error {
-	_, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("CombinedIds must be strings")
-	}
-
-	*ci = v.(CombinedId)
-
-	if err := ci.Validate(); err != nil {
-		return errors.Wrap(err, "invalid CombinedId")
-	}
-
-	return nil
-}
-
-// MarshalGQL implement the Marshaler interface for gqlgen
-func (ci CombinedId) MarshalGQL(w io.Writer) {
-	_, _ = w.Write([]byte(`"` + ci.String() + `"`))
 }
 
 // Validate tell if the Id is valid

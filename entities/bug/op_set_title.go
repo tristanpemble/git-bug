@@ -80,9 +80,6 @@ func (s SetTitleTimelineItem) CombinedId() entity.CombinedId {
 	return s.combinedId
 }
 
-// IsAuthored is a sign post-method for gqlgen, to mark compliance to an interface.
-func (s *SetTitleTimelineItem) IsAuthored() {}
-
 // SetTitle is a convenience function to change a bugs title
 func SetTitle(b Interface, author identity.Interface, unixTime int64, title string, metadata map[string]string) (*SetTitleOperation, error) {
 	var lastTitleOp *SetTitleOperation

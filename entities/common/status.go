@@ -2,8 +2,6 @@ package common
 
 import (
 	"fmt"
-	"io"
-	"strconv"
 	"strings"
 )
 
@@ -55,32 +53,5 @@ func (s Status) Validate() error {
 		return fmt.Errorf("invalid")
 	}
 
-	return nil
-}
-
-func (s Status) MarshalGQL(w io.Writer) {
-	switch s {
-	case OpenStatus:
-		_, _ = w.Write([]byte(strconv.Quote("OPEN")))
-	case ClosedStatus:
-		_, _ = w.Write([]byte(strconv.Quote("CLOSED")))
-	default:
-		panic("missing case")
-	}
-}
-
-func (s *Status) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-	switch str {
-	case "OPEN":
-		*s = OpenStatus
-	case "CLOSED":
-		*s = ClosedStatus
-	default:
-		return fmt.Errorf("%s is not a valid Status", str)
-	}
 	return nil
 }
