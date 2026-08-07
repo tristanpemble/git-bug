@@ -225,6 +225,22 @@ func RepoDataTest(t *testing.T, repo RepoData) {
 	require.NoError(t, err)
 	require.Equal(t, []Hash{commit1, commit2}, commits)
 
+	// Compare-and-set updates reject a stale writer without changing the ref.
+	commit3, err := repo.StoreCommit(treeHash1, commit2)
+	require.NoError(t, err)
+	err = repo.UpdateRefIfMatches("refs/bugs/ref1", commit3, commit2)
+	require.NoError(t, err)
+	err = repo.UpdateRefIfMatches("refs/bugs/ref1", commit1, commit2)
+	require.ErrorIs(t, err, ErrReferenceConflict)
+	h, err = repo.ResolveRef("refs/bugs/ref1")
+	require.NoError(t, err)
+	require.Equal(t, commit3, h)
+	err = repo.UpdateRefIfMatches("refs/bugs/ref1", commit1, "")
+	require.ErrorIs(t, err, ErrReferenceConflict)
+	h, err = repo.ResolveRef("refs/bugs/ref1")
+	require.NoError(t, err)
+	require.Equal(t, commit3, h)
+
 	_, err = repo.ResolveRef("/refs/bugs/refnotexist")
 	require.ErrorIs(t, err, ErrNotFound)
 
@@ -233,11 +249,13 @@ func RepoDataTest(t *testing.T, repo RepoData) {
 
 	// Cleanup
 
-	err = repo.RemoveRef("refs/bugs/ref1")
+	err = repo.RemoveRefIfMatches("refs/bugs/ref1", commit2)
+	require.ErrorIs(t, err, ErrReferenceConflict)
+	err = repo.RemoveRefIfMatches("refs/bugs/ref1", commit3)
 	require.NoError(t, err)
 
-	// RemoveRef is idempotent
-	err = repo.RemoveRef("refs/bugs/ref1")
+	// Conditional removal is idempotent once the ref is absent.
+	err = repo.RemoveRefIfMatches("refs/bugs/ref1", commit3)
 	require.NoError(t, err)
 }
 

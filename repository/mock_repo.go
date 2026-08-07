@@ -368,7 +368,31 @@ func (r *mockRepoDataBrowse) UpdateRef(ref string, hash Hash) error {
 	return nil
 }
 
+func (r *mockRepoDataBrowse) UpdateRefIfMatches(ref string, hash, oldHash Hash) error {
+	current, exists := r.refs[ref]
+	if oldHash == "" && exists {
+		return ErrReferenceConflict
+	}
+	if oldHash != "" && (!exists || current != oldHash) {
+		return ErrReferenceConflict
+	}
+	r.refs[ref] = hash
+	return nil
+}
+
 func (r *mockRepoDataBrowse) RemoveRef(ref string) error {
+	delete(r.refs, ref)
+	return nil
+}
+
+func (r *mockRepoDataBrowse) RemoveRefIfMatches(ref string, oldHash Hash) error {
+	current, exists := r.refs[ref]
+	if !exists {
+		return nil
+	}
+	if current != oldHash {
+		return ErrReferenceConflict
+	}
 	delete(r.refs, ref)
 	return nil
 }
@@ -397,8 +421,7 @@ func (r *mockRepoDataBrowse) CopyRef(source string, dest string) error {
 		return ErrNotFound
 	}
 
-	r.refs[dest] = hash
-	return nil
+	return r.UpdateRefIfMatches(dest, hash, "")
 }
 
 func (r *mockRepoDataBrowse) ListCommits(ref string) ([]Hash, error) {

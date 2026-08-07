@@ -3,6 +3,7 @@ package repository
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	fdiff "github.com/go-git/go-git/v5/plumbing/format/diff"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	gitstorage "github.com/go-git/go-git/v5/storage"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -388,9 +390,7 @@ func (repo *GoGitRepo) GetIndex(name string) (Index, error) {
 		return index, nil
 	}
 
-	path := filepath.Join(repo.localStorage.Root(), indexPath, name)
-
-	index, err := openBleveIndex(path)
+	index, err := newMemoryBleveIndex()
 	if err == nil {
 		repo.indexes[name] = index
 	}
@@ -746,9 +746,80 @@ func (repo *GoGitRepo) UpdateRef(ref string, hash Hash) error {
 	return repo.r.Storer.SetReference(plumbing.NewHashReference(plumbing.ReferenceName(ref), plumbing.NewHash(hash.String())))
 }
 
+// UpdateRefIfMatches atomically updates a reference if it still points to the
+// expected old hash. A per-reference OS lock covers creation as well as updates.
+func (repo *GoGitRepo) UpdateRefIfMatches(ref string, hash, oldHash Hash) error {
+	return repo.withRefLock(ref, func() error {
+		name := plumbing.ReferenceName(ref)
+		current, err := repo.r.Reference(name, false)
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
+			if oldHash != "" {
+				return fmt.Errorf("%w: %s", ErrReferenceConflict, ref)
+			}
+			next := plumbing.NewHashReference(name, plumbing.NewHash(hash.String()))
+			return repo.r.Storer.SetReference(next)
+		}
+		if err != nil {
+			return err
+		}
+		if oldHash == "" || current.Hash().String() != oldHash.String() {
+			return fmt.Errorf("%w: %s", ErrReferenceConflict, ref)
+		}
+
+		next := plumbing.NewHashReference(name, plumbing.NewHash(hash.String()))
+		err = repo.r.Storer.CheckAndSetReference(next, current)
+		if errors.Is(err, gitstorage.ErrReferenceHasChanged) {
+			return fmt.Errorf("%w: %s", ErrReferenceConflict, ref)
+		}
+		return err
+	})
+}
+
 // RemoveRef will remove a Git reference
 func (repo *GoGitRepo) RemoveRef(ref string) error {
 	return repo.r.Storer.RemoveReference(plumbing.ReferenceName(ref))
+}
+
+// RemoveRefIfMatches removes a reference only when its hash has not changed.
+func (repo *GoGitRepo) RemoveRefIfMatches(ref string, oldHash Hash) error {
+	return repo.withRefLock(ref, func() error {
+		name := plumbing.ReferenceName(ref)
+		current, err := repo.r.Reference(name, false)
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if current.Hash().String() != oldHash.String() {
+			return fmt.Errorf("%w: %s", ErrReferenceConflict, ref)
+		}
+		return repo.r.Storer.RemoveReference(name)
+	})
+}
+
+// withRefLock serializes one git-bug reference mutation across processes.
+// The lock file is durable but the OS lock is released automatically on exit.
+func (repo *GoGitRepo) withRefLock(ref string, fn func() error) (err error) {
+	digest := sha256.Sum256([]byte(ref))
+	lockDir := filepath.Join("locks", "refs")
+	if err := repo.localStorage.MkdirAll(lockDir, 0755); err != nil {
+		return err
+	}
+	lockPath := filepath.Join(lockDir, fmt.Sprintf("%x", digest))
+	f, err := repo.localStorage.OpenFile(lockPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+	if err := f.Lock(); err != nil {
+		return err
+	}
+	return fn()
 }
 
 // ListRefs will return a list of Git ref matching the given refspec
@@ -793,7 +864,7 @@ func (repo *GoGitRepo) CopyRef(source string, dest string) error {
 	if err != nil {
 		return err
 	}
-	return repo.r.Storer.SetReference(plumbing.NewHashReference(plumbing.ReferenceName(dest), r.Hash()))
+	return repo.UpdateRefIfMatches(dest, Hash(r.Hash().String()), "")
 }
 
 // ListCommits will return the list of tree hashes of a ref, in chronological order
@@ -912,7 +983,7 @@ func (repo *GoGitRepo) getClock(name string) (lamport.Clock, error) {
 		repo.clocks[name] = c
 		return c, nil
 	}
-	if err == lamport.ErrClockNotExist {
+	if errors.Is(err, lamport.ErrClockNotExist) || errors.Is(err, lamport.ErrClockCorrupt) {
 		return nil, ErrClockNotExist
 	}
 	return nil, err

@@ -273,9 +273,16 @@ func (i *Identity) Commit(repo repository.ClockedRepo) error {
 	}
 
 	var lastCommit repository.Hash
+	var expectedCommit repository.Hash
+	type pendingVersion struct {
+		version *version
+		commit  repository.Hash
+	}
+	var pending []pendingVersion
 	for _, v := range i.versions {
 		if v.commitHash != "" {
 			lastCommit = v.commitHash
+			expectedCommit = v.commitHash
 			// ignore already commit versions
 			continue
 		}
@@ -306,11 +313,17 @@ func (i *Identity) Commit(repo repository.ClockedRepo) error {
 		}
 
 		lastCommit = commitHash
-		v.commitHash = commitHash
+		pending = append(pending, pendingVersion{version: v, commit: commitHash})
 	}
 
 	ref := fmt.Sprintf("%s%s", identityRefPattern, i.Id().String())
-	return repo.UpdateRef(ref, lastCommit)
+	if err := repo.UpdateRefIfMatches(ref, lastCommit, expectedCommit); err != nil {
+		return err
+	}
+	for _, item := range pending {
+		item.version.commitHash = item.commit
+	}
+	return nil
 }
 
 func (i *Identity) CommitAsNeeded(repo repository.ClockedRepo) error {
@@ -358,6 +371,11 @@ func (i *Identity) Merge(repo repository.Repo, other *Identity) (bool, error) {
 	}
 
 	modified := false
+	originalLength := len(i.versions)
+	var expectedCommit repository.Hash
+	if originalLength > 0 {
+		expectedCommit = i.versions[originalLength-1].commitHash
+	}
 	var lastCommit repository.Hash
 	for j, otherVersion := range other.versions {
 		// if there is more version in other, take them
@@ -375,13 +393,14 @@ func (i *Identity) Merge(repo repository.Repo, other *Identity) (bool, error) {
 	}
 
 	if modified {
-		err := repo.UpdateRef(identityRefPattern+i.Id().String(), lastCommit)
+		err := repo.UpdateRefIfMatches(identityRefPattern+i.Id().String(), lastCommit, expectedCommit)
 		if err != nil {
+			i.versions = i.versions[:originalLength]
 			return false, err
 		}
 	}
 
-	return false, nil
+	return modified, nil
 }
 
 // Validate check if the Identity data is valid

@@ -38,7 +38,7 @@ func newBugTitleEditCommand(env *execenv.Env) *cobra.Command {
 }
 
 func runBugTitleEdit(env *execenv.Env, opts bugTitleEditOptions, args []string) error {
-	b, _, err := ResolveSelected(env.Backend, args)
+	b, _, err := ResolveMutationTarget(env.Backend, args, env.In.IsTerminal() && !opts.nonInteractive)
 	if err != nil {
 		return err
 	}

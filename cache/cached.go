@@ -13,9 +13,9 @@ var _ CacheEntity = &CachedEntityBase[dag.Snapshot, dag.Operation]{}
 
 // CachedEntityBase provide the base function of an entity managed by the cache.
 type CachedEntityBase[SnapT dag.Snapshot, OpT dag.Operation] struct {
-	repo            repository.ClockedRepo
-	entityUpdated   func(id entity.Id) error
-	getUserIdentity getUserIdentityFunc
+	repo          repository.ClockedRepo
+	entityUpdated func(id entity.Id) error
+	getActor      getActorFunc
 
 	mu     sync.RWMutex
 	entity dag.Interface[SnapT, OpT]

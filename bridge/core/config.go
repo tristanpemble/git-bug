@@ -20,8 +20,12 @@ func FinishConfig(repo *cache.RepoCache, metaKey string, login string) error {
 		return nil
 	}
 
-	// if a default user exist, tag it with the login
-	user, err := repo.GetUserIdentity()
+	// If this invocation selected an actor, tag that identity. Otherwise fall
+	// back to the human repository default for the bootstrap workflow.
+	user, err := repo.GetActor()
+	if err == identity.ErrNoIdentitySet {
+		user, err = repo.GetUserIdentity()
+	}
 	if err != nil && err != identity.ErrNoIdentitySet {
 		// real error
 		return err

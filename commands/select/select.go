@@ -86,6 +86,23 @@ func Resolve[CacheT cache.CacheEntity](repo *cache.RepoCache,
 	return *new(CacheT), nil, NewErrNoValidId(typename)
 }
 
+// ResolveExplicit resolves only the first command-line argument. It never
+// reads or changes the shared interactive selection file.
+func ResolveExplicit[CacheT cache.CacheEntity](typename string, resolver Resolver[CacheT], args []string) (CacheT, []string, error) {
+	if len(args) == 0 {
+		return *new(CacheT), nil, NewErrNoValidId(typename)
+	}
+
+	cached, err := resolver.ResolvePrefix(args[0])
+	if err != nil {
+		if entity.IsErrNotFound(err) {
+			return *new(CacheT), nil, NewErrNoValidId(typename)
+		}
+		return *new(CacheT), nil, err
+	}
+	return cached, args[1:], nil
+}
+
 func selectFileName(namespace string) string {
 	return filepath.Join("select", namespace)
 }

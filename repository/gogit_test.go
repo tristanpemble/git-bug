@@ -66,17 +66,16 @@ func TestGoGitRepo_Indexes(t *testing.T) {
 	repo := CreateGoGitTestRepo(t, false)
 	plainRoot := goGitRepoDir(t, repo)
 
-	// Can create indices
+	// Indexes are process-local derived data and do not create shared files.
 	indexA, err := repo.GetIndex("a")
 	require.NoError(t, err)
 	require.NotZero(t, indexA)
-	require.FileExists(t, filepath.Join(plainRoot, ".git", namespace, "indexes", "a", "index_meta.json"))
-	require.FileExists(t, filepath.Join(plainRoot, ".git", namespace, "indexes", "a", "store", "root.bolt"))
+	require.NoDirExists(t, filepath.Join(plainRoot, ".git", namespace, "indexes", "a"))
 
 	indexB, err := repo.GetIndex("b")
 	require.NoError(t, err)
 	require.NotZero(t, indexB)
-	require.DirExists(t, filepath.Join(plainRoot, ".git", namespace, "indexes", "b"))
+	require.NoDirExists(t, filepath.Join(plainRoot, ".git", namespace, "indexes", "b"))
 
 	// Can get an existing index
 	indexA, err = repo.GetIndex("a")

@@ -21,7 +21,7 @@ func newBugStatusOpenCommand(env *execenv.Env) *cobra.Command {
 }
 
 func runBugStatusOpen(env *execenv.Env, args []string) error {
-	b, _, err := ResolveSelected(env.Backend, args)
+	b, _, err := ResolveMutationTarget(env.Backend, args, env.In.IsTerminal())
 	if err != nil {
 		return err
 	}

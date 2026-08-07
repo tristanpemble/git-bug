@@ -9,12 +9,14 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/index/upsidedown"
+	"github.com/blevesearch/bleve/v2/mapping"
 )
 
 var _ Index = &bleveIndex{}
 
 type bleveIndex struct {
-	path string
+	path   string
+	memory bool
 
 	mu    sync.RWMutex
 	index bleve.Index
@@ -49,6 +51,14 @@ func openBleveIndex(path string) (*bleveIndex, error) {
 	return &bleveIndex{path: path, index: index}, nil
 }
 
+func newMemoryBleveIndex() (*bleveIndex, error) {
+	index, err := bleve.NewMemOnly(newIndexMapping())
+	if err != nil {
+		return nil, err
+	}
+	return &bleveIndex{index: index, memory: true}, nil
+}
+
 func (b *bleveIndex) makeIndex() error {
 	err := os.MkdirAll(b.path, os.ModePerm)
 	if err != nil {
@@ -57,15 +67,18 @@ func (b *bleveIndex) makeIndex() error {
 
 	// TODO: follow https://github.com/blevesearch/bleve/issues/1576 recommendations
 
-	mapping := bleve.NewIndexMapping()
-	mapping.DefaultAnalyzer = "en"
-
-	index, err := bleve.New(b.path, mapping)
+	index, err := bleve.New(b.path, newIndexMapping())
 	if err != nil {
 		return err
 	}
 	b.index = index
 	return nil
+}
+
+func newIndexMapping() *mapping.IndexMappingImpl {
+	mapping := bleve.NewIndexMapping()
+	mapping.DefaultAnalyzer = "en"
+	return mapping
 }
 
 func (b *bleveIndex) IndexOne(id string, texts []string) error {
@@ -157,6 +170,10 @@ func (b *bleveIndex) Clear() error {
 
 	err := b.index.Close()
 	if err != nil {
+		return err
+	}
+	if b.memory {
+		b.index, err = bleve.NewMemOnly(newIndexMapping())
 		return err
 	}
 

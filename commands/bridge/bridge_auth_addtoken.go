@@ -91,7 +91,7 @@ func runBridgeAuthAddToken(env *execenv.Env, opts bridgeAuthAddTokenOptions, arg
 	var err error
 
 	if opts.user == "" {
-		user, err = env.Backend.GetUserIdentity()
+		user = env.Actor
 	} else {
 		user, err = env.Backend.Identities().ResolvePrefix(opts.user)
 	}

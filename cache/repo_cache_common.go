@@ -165,8 +165,8 @@ func (c *RepoCache) Pull(remote string) error {
 }
 
 func (c *RepoCache) SetUserIdentity(i *IdentityCache) error {
-	c.muUserIdentity.RLock()
-	defer c.muUserIdentity.RUnlock()
+	c.muUserIdentity.Lock()
+	defer c.muUserIdentity.Unlock()
 
 	// Make sure that everything is fine
 	if _, err := c.identities.Resolve(i.Id()); err != nil {
@@ -179,8 +179,7 @@ func (c *RepoCache) SetUserIdentity(i *IdentityCache) error {
 	}
 
 	c.userIdentityId = i.Id()
-
-	return nil
+	return c.SetActor(i)
 }
 
 func (c *RepoCache) ClearUserIdentity() error {
@@ -193,7 +192,33 @@ func (c *RepoCache) ClearUserIdentity() error {
 	}
 
 	c.userIdentityId = ""
+	c.muActor.Lock()
+	c.actorId = ""
+	c.muActor.Unlock()
 	return nil
+}
+
+// SetActor selects an identity for mutations performed by this cache instance.
+// It does not change the repository's configured default identity.
+func (c *RepoCache) SetActor(i *IdentityCache) error {
+	if _, err := c.identities.Resolve(i.Id()); err != nil {
+		return errors.Wrap(err, "acting identity is not available in the cache")
+	}
+	c.muActor.Lock()
+	c.actorId = i.Id()
+	c.muActor.Unlock()
+	return nil
+}
+
+// GetActor returns the invocation-scoped identity selected with SetActor.
+func (c *RepoCache) GetActor() (*IdentityCache, error) {
+	c.muActor.RLock()
+	id := c.actorId
+	c.muActor.RUnlock()
+	if id == "" {
+		return nil, identity.ErrNoIdentitySet
+	}
+	return c.identities.Resolve(id)
 }
 
 func (c *RepoCache) GetUserIdentity() (*IdentityCache, error) {

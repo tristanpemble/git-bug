@@ -22,7 +22,6 @@ import (
 	httpapi "github.com/git-bug/git-bug/api/http"
 	"github.com/git-bug/git-bug/cache"
 	"github.com/git-bug/git-bug/commands/execenv"
-	"github.com/git-bug/git-bug/entities/identity"
 	"github.com/git-bug/git-bug/repository"
 	"github.com/git-bug/git-bug/webui"
 )
@@ -51,10 +50,15 @@ func newWebUICommand(env *execenv.Env) *cobra.Command {
 Available git config:
   git-bug.webui.open [bool]: control the automatic opening of the web UI in the default browser
 `,
-		PreRunE: execenv.LoadRepo(env),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWebUI(env, options)
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if options.readOnly {
+				return execenv.LoadRepo(env)(cmd, args)
+			}
+			return execenv.LoadBackendEnsureUser(env)(cmd, args)
 		},
+		RunE: execenv.CloseBackend(env, func(cmd *cobra.Command, args []string) error {
+			return runWebUI(env, options)
+		}),
 	}
 
 	flags := cmd.Flags()
@@ -80,11 +84,7 @@ func setupRoutes(env *execenv.Env, opts webUIOptions) (*mux.Router, func() error
 	// fixed identity: the default user of the repo
 	// TODO: support dynamic authentication with OAuth
 	if !opts.readOnly {
-		author, err := identity.GetUserIdentity(env.Repo)
-		if err != nil {
-			return nil, nil, err
-		}
-		router.Use(auth.Middleware(author.Id()))
+		router.Use(auth.Middleware(env.Actor.Id()))
 	}
 
 	mrc := cache.NewMultiRepoCache()

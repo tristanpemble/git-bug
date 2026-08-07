@@ -19,6 +19,9 @@ var (
 	ErrClockNotExist = errors.New("clock doesn't exist")
 	// ErrNotFound is the error returned when a git object can't be found
 	ErrNotFound = errors.New("ref not found")
+	// ErrReferenceConflict is returned when a reference changed after it was read.
+	// Callers can retry the complete read-modify-write operation against the new tip.
+	ErrReferenceConflict = errors.New("reference changed concurrently; retry the operation")
 )
 
 // Repo represents a source code repository.
@@ -178,9 +181,18 @@ type RepoData interface {
 	// UpdateRef will create or update a Git reference
 	UpdateRef(ref string, hash Hash) error
 
+	// UpdateRefIfMatches atomically updates a Git reference when it still points
+	// to oldHash. An empty oldHash requires the reference to be absent and is
+	// intended for content-addressed, newly-created refs.
+	UpdateRefIfMatches(ref string, hash, oldHash Hash) error
+
 	// RemoveRef will remove a Git reference
 	// RemoveRef is idempotent.
 	RemoveRef(ref string) error
+
+	// RemoveRefIfMatches atomically removes a Git reference when it still
+	// points to oldHash. Removing an already absent reference is idempotent.
+	RemoveRefIfMatches(ref string, oldHash Hash) error
 
 	// ListRefs will return a list of Git ref matching the given refspec
 	ListRefs(refPrefix string) ([]string, error)

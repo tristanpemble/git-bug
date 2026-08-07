@@ -168,7 +168,14 @@ func Remove(repo repository.ClockedRepo, id entity.Id) error {
 	}
 
 	for _, ref := range fullMatches {
-		err = repo.RemoveRef(ref)
+		oldHash, resolveErr := repo.ResolveRef(ref)
+		if errors.Is(resolveErr, repository.ErrNotFound) {
+			continue
+		}
+		if resolveErr != nil {
+			return resolveErr
+		}
+		err = repo.RemoveRefIfMatches(ref, oldHash)
 		if err != nil {
 			return err
 		}

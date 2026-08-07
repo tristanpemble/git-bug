@@ -19,10 +19,10 @@ type RepoCacheBug struct {
 
 func NewRepoCacheBug(repo repository.ClockedRepo,
 	resolvers func() entity.Resolvers,
-	getUserIdentity getUserIdentityFunc) *RepoCacheBug {
+	getActor getActorFunc) *RepoCacheBug {
 
 	makeCached := func(b *bug.Bug, entityUpdated func(id entity.Id) error) *BugCache {
-		return NewBugCache(b, repo, getUserIdentity, entityUpdated)
+		return NewBugCache(b, repo, getActor, entityUpdated)
 	}
 
 	makeIndexData := func(b *BugCache) []string {
@@ -44,10 +44,10 @@ func NewRepoCacheBug(repo repository.ClockedRepo,
 	}
 
 	sc := NewSubCache[*bug.Bug, *BugExcerpt, *BugCache](
-		repo, resolvers, getUserIdentity,
+		repo, resolvers, getActor,
 		makeCached, NewBugExcerpt, makeIndexData, actions,
 		bug.Typename, bug.Namespace,
-		formatVersion, defaultMaxLoadedBugs,
+		defaultMaxLoadedBugs,
 	)
 
 	return &RepoCacheBug{SubCache: sc}
@@ -225,7 +225,7 @@ func (c *RepoCacheBug) New(title string, message string) (*BugCache, *bug.Create
 // NewWithFiles create a new bug with attached files for the message
 // The new bug is written in the repository (commit)
 func (c *RepoCacheBug) NewWithFiles(title string, message string, files []repository.Hash) (*BugCache, *bug.CreateOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,10 +1,7 @@
 package cache
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
-	"path/filepath"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -25,7 +22,7 @@ type CacheEntity interface {
 	Lock()
 }
 
-type getUserIdentityFunc func() (*IdentityCache, error)
+type getActorFunc func() (*IdentityCache, error)
 
 // Actions expose a number of action functions on Entities, to give upper layers (cache) a way to normalize interactions.
 // Note: ideally this wouldn't exist, the cache layer would assume that everything is an entity/dag, and directly use the
@@ -44,15 +41,14 @@ type SubCache[EntityT entity.Interface, ExcerptT Excerpt, CacheT CacheEntity] st
 	repo      repository.ClockedRepo
 	resolvers func() entity.Resolvers
 
-	getUserIdentity getUserIdentityFunc
-	makeCached      func(entity EntityT, entityUpdated func(id entity.Id) error) CacheT
-	makeExcerpt     func(CacheT) ExcerptT
-	makeIndexData   func(CacheT) []string
-	actions         Actions[EntityT]
+	getActor      getActorFunc
+	makeCached    func(entity EntityT, entityUpdated func(id entity.Id) error) CacheT
+	makeExcerpt   func(CacheT) ExcerptT
+	makeIndexData func(CacheT) []string
+	actions       Actions[EntityT]
 
 	typename  string
 	namespace string
-	version   uint
 	maxLoaded int
 
 	mu       sync.RWMutex
@@ -66,127 +62,32 @@ type SubCache[EntityT entity.Interface, ExcerptT Excerpt, CacheT CacheEntity] st
 
 func NewSubCache[EntityT entity.Interface, ExcerptT Excerpt, CacheT CacheEntity](
 	repo repository.ClockedRepo,
-	resolvers func() entity.Resolvers, getUserIdentity getUserIdentityFunc,
+	resolvers func() entity.Resolvers, getActor getActorFunc,
 	makeCached func(entity EntityT, entityUpdated func(id entity.Id) error) CacheT,
 	makeExcerpt func(CacheT) ExcerptT,
 	makeIndexData func(CacheT) []string,
 	actions Actions[EntityT],
 	typename, namespace string,
-	version uint, maxLoaded int) *SubCache[EntityT, ExcerptT, CacheT] {
+	maxLoaded int) *SubCache[EntityT, ExcerptT, CacheT] {
 	return &SubCache[EntityT, ExcerptT, CacheT]{
-		repo:            repo,
-		resolvers:       resolvers,
-		getUserIdentity: getUserIdentity,
-		makeCached:      makeCached,
-		makeExcerpt:     makeExcerpt,
-		makeIndexData:   makeIndexData,
-		actions:         actions,
-		typename:        typename,
-		namespace:       namespace,
-		version:         version,
-		maxLoaded:       maxLoaded,
-		excerpts:        make(map[entity.Id]ExcerptT),
-		cached:          make(map[entity.Id]CacheT),
-		lru:             newLRUIdCache(),
+		repo:          repo,
+		resolvers:     resolvers,
+		getActor:      getActor,
+		makeCached:    makeCached,
+		makeExcerpt:   makeExcerpt,
+		makeIndexData: makeIndexData,
+		actions:       actions,
+		typename:      typename,
+		namespace:     namespace,
+		maxLoaded:     maxLoaded,
+		excerpts:      make(map[entity.Id]ExcerptT),
+		cached:        make(map[entity.Id]CacheT),
+		lru:           newLRUIdCache(),
 	}
 }
 
 func (sc *SubCache[EntityT, ExcerptT, CacheT]) Typename() string {
 	return sc.typename
-}
-
-// Load will try to read from the disk the entity cache file
-func (sc *SubCache[EntityT, ExcerptT, CacheT]) Load() error {
-	sc.mu.Lock()
-	defer sc.mu.Unlock()
-
-	f, err := sc.repo.LocalStorage().Open(filepath.Join("cache", sc.namespace))
-	if err != nil {
-		return err
-	}
-
-	aux := struct {
-		Version  uint
-		Excerpts map[entity.Id]ExcerptT
-	}{}
-
-	decoder := gob.NewDecoder(f)
-	err = decoder.Decode(&aux)
-	if err != nil {
-		_ = f.Close()
-		return err
-	}
-
-	err = f.Close()
-	if err != nil {
-		return err
-	}
-
-	if aux.Version != sc.version {
-		return fmt.Errorf("unknown %s cache format version %v", sc.namespace, aux.Version)
-	}
-
-	// the id is not serialized in the excerpt itself (non-exported field in go, long story ...),
-	// so we fix it here, which doubles as enforcing coherency.
-	for id, excerpt := range aux.Excerpts {
-		excerpt.setId(id)
-	}
-
-	sc.excerpts = aux.Excerpts
-
-	index, err := sc.repo.GetIndex(sc.namespace)
-	if err != nil {
-		return err
-	}
-
-	// simple heuristic to detect a mismatch between the index and the entities
-	count, err := index.DocCount()
-	if err != nil {
-		return err
-	}
-	if count != uint64(len(sc.excerpts)) {
-		return fmt.Errorf("count mismatch between bleve and %s excerpts", sc.namespace)
-	}
-
-	// TODO: find a way to check lamport clocks
-
-	return nil
-}
-
-// Write will serialize on disk the entity cache file
-func (sc *SubCache[EntityT, ExcerptT, CacheT]) write() error {
-	sc.mu.RLock()
-	defer sc.mu.RUnlock()
-
-	var data bytes.Buffer
-
-	aux := struct {
-		Version  uint
-		Excerpts map[entity.Id]ExcerptT
-	}{
-		Version:  sc.version,
-		Excerpts: sc.excerpts,
-	}
-
-	encoder := gob.NewEncoder(&data)
-
-	err := encoder.Encode(aux)
-	if err != nil {
-		return err
-	}
-
-	f, err := sc.repo.LocalStorage().Create(filepath.Join("cache", sc.namespace))
-	if err != nil {
-		return err
-	}
-
-	_, err = f.Write(data.Bytes())
-	if err != nil {
-		_ = f.Close()
-		return err
-	}
-
-	return f.Close()
 }
 
 func (sc *SubCache[EntityT, ExcerptT, CacheT]) Build() <-chan BuildEvent {
@@ -221,7 +122,11 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) Build() <-chan BuildEvent {
 			Event:    BuildEventStarted,
 		}
 
+		sc.mu.Lock()
 		sc.excerpts = make(map[entity.Id]ExcerptT)
+		sc.cached = make(map[entity.Id]CacheT)
+		sc.lru = newLRUIdCache()
+		sc.mu.Unlock()
 
 		allEntities := sc.actions.ReadAllWithResolver(sc.repo, sc.resolvers())
 
@@ -257,9 +162,12 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) Build() <-chan BuildEvent {
 			}
 
 			cached := sc.makeCached(e.Entity, sc.entityUpdated)
+			sc.mu.Lock()
 			sc.excerpts[e.Entity.Id()] = sc.makeExcerpt(cached)
 			// might as well keep them in memory
 			sc.cached[e.Entity.Id()] = cached
+			sc.lru.Add(e.Entity.Id())
+			sc.mu.Unlock()
 
 			indexData := sc.makeIndexData(cached)
 			if err := indexer(e.Entity.Id().String(), indexData); err != nil {
@@ -302,15 +210,6 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) Build() <-chan BuildEvent {
 				}
 				return
 			}
-		}
-
-		err = sc.write()
-		if err != nil {
-			out <- BuildEvent{
-				Typename: sc.typename,
-				Err:      err,
-			}
-			return
 		}
 
 		out <- BuildEvent{
@@ -523,7 +422,7 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) Remove(prefix string) error {
 	// defer to notify after the release of the mutex
 	defer sc.notifyObservers(EntityEventRemoved, e.Id())
 
-	return sc.write()
+	return nil
 }
 
 func (sc *SubCache[EntityT, ExcerptT, CacheT]) RemoveAll() error {
@@ -566,7 +465,7 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) RemoveAll() error {
 		}
 	}()
 
-	return sc.write()
+	return nil
 }
 
 func (sc *SubCache[EntityT, ExcerptT, CacheT]) MergeAll(remote string) <-chan entity.MergeResult {
@@ -576,7 +475,7 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) MergeAll(remote string) <-chan en
 	go func() {
 		defer close(out)
 
-		author, err := sc.getUserIdentity()
+		author, err := sc.getActor()
 		if err != nil {
 			out <- entity.NewMergeError(err, "")
 			return
@@ -614,12 +513,6 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) MergeAll(remote string) <-chan en
 				sc.mu.Unlock()
 				sc.notifyObservers(EntityEventUpdated, result.Id)
 			}
-		}
-
-		err = sc.write()
-		if err != nil {
-			out <- entity.NewMergeError(err, "")
-			return
 		}
 	}()
 
@@ -674,7 +567,7 @@ func (sc *SubCache[EntityT, ExcerptT, CacheT]) updateExcerptAndIndex(id entity.I
 		return err
 	}
 
-	return sc.write()
+	return nil
 }
 
 // evictIfNeeded will evict an entity from the cache if needed

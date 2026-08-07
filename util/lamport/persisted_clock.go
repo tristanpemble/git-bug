@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/util"
 )
 
-var ErrClockNotExist = errors.New("clock doesn't exist")
+var (
+	ErrClockNotExist = errors.New("clock doesn't exist")
+	ErrClockCorrupt  = errors.New("clock is corrupt")
+)
 
 type PersistedClock struct {
 	*MemClock
@@ -26,7 +32,16 @@ func NewPersistedClock(root billy.Filesystem, filePath string) (*PersistedClock,
 		filePath: filePath,
 	}
 
-	err := clock.Write()
+	err := clock.withLock(func() error {
+		err := clock.readUnlocked()
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, ErrClockNotExist) && !errors.Is(err, ErrClockCorrupt) {
+			return err
+		}
+		return clock.writeUnlocked()
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +56,7 @@ func LoadPersistedClock(root billy.Filesystem, filePath string) (*PersistedClock
 		filePath: filePath,
 	}
 
-	err := clock.read()
+	err := clock.withLock(clock.readUnlocked)
 	if err != nil {
 		return nil, err
 	}
@@ -51,25 +66,36 @@ func LoadPersistedClock(root billy.Filesystem, filePath string) (*PersistedClock
 
 // Increment is used to return the value of the lamport clock and increment it afterwards
 func (pc *PersistedClock) Increment() (Time, error) {
-	time, err := pc.MemClock.Increment()
-	if err != nil {
-		return 0, err
-	}
-	return time, pc.Write()
+	var result Time
+	err := pc.withLock(func() error {
+		if err := pc.refreshUnlocked(); err != nil {
+			return err
+		}
+		var err error
+		result, err = pc.MemClock.Increment()
+		if err != nil {
+			return err
+		}
+		return pc.writeUnlocked()
+	})
+	return result, err
 }
 
 // Witness is called to update our local clock if necessary after
 // witnessing a clock value received from another process
 func (pc *PersistedClock) Witness(time Time) error {
-	// TODO: rework so that we write only when the clock was actually updated
-	err := pc.MemClock.Witness(time)
-	if err != nil {
-		return err
-	}
-	return pc.Write()
+	return pc.withLock(func() error {
+		if err := pc.refreshUnlocked(); err != nil {
+			return err
+		}
+		if err := pc.MemClock.Witness(time); err != nil {
+			return err
+		}
+		return pc.writeUnlocked()
+	})
 }
 
-func (pc *PersistedClock) read() error {
+func (pc *PersistedClock) readUnlocked() error {
 	f, err := pc.root.Open(pc.filePath)
 	if os.IsNotExist(err) {
 		return ErrClockNotExist
@@ -89,14 +115,9 @@ func (pc *PersistedClock) read() error {
 		return err
 	}
 
-	var value uint64
-	n, err := fmt.Sscanf(string(content), "%d", &value)
+	value, err := strconv.ParseUint(strings.TrimSpace(string(content)), 10, 64)
 	if err != nil {
-		return err
-	}
-
-	if n != 1 {
-		return fmt.Errorf("could not read the clock")
+		return fmt.Errorf("%w: %v", ErrClockCorrupt, err)
 	}
 
 	pc.MemClock = NewMemClockWithTime(value)
@@ -105,6 +126,43 @@ func (pc *PersistedClock) read() error {
 }
 
 func (pc *PersistedClock) Write() error {
+	return pc.withLock(pc.writeUnlocked)
+}
+
+func (pc *PersistedClock) writeUnlocked() error {
 	data := []byte(fmt.Sprintf("%d", pc.counter))
 	return util.WriteFile(pc.root, pc.filePath, data, 0644)
+}
+
+func (pc *PersistedClock) refreshUnlocked() error {
+	current := pc.MemClock.Time()
+	err := pc.readUnlocked()
+	if errors.Is(err, ErrClockNotExist) || errors.Is(err, ErrClockCorrupt) {
+		pc.MemClock = NewMemClockWithTime(uint64(current))
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return pc.MemClock.Witness(current)
+}
+
+func (pc *PersistedClock) withLock(fn func() error) (err error) {
+	lockPath := filepath.Join("locks", pc.filePath)
+	if err := pc.root.MkdirAll(filepath.Dir(lockPath), 0755); err != nil {
+		return err
+	}
+	f, err := pc.root.OpenFile(lockPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+	if err := f.Lock(); err != nil {
+		return err
+	}
+	return fn()
 }

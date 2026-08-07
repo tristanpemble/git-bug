@@ -23,9 +23,13 @@ type Env struct {
 	Ctx     context.Context
 	Repo    repository.ClockedRepo
 	Backend *cache.RepoCache
-	In      In
-	Out     Out
-	Err     Out
+	// IdentityOverride is populated by the root --identity option.
+	IdentityOverride string
+	// Actor is the identity resolved for this command invocation.
+	Actor *cache.IdentityCache
+	In    In
+	Out   Out
+	Err   Out
 }
 
 func NewEnv(ctx context.Context) *Env {

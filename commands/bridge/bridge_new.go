@@ -85,7 +85,7 @@ git bug bridge new \
     --target=gitlab \
     --url=https://github.com/example-org/example-repo \
     --token=$TOKEN`,
-		PreRunE: execenv.LoadBackend(env),
+		PreRunE: execenv.LoadBackendOptionalUser(env),
 		RunE: execenv.CloseBackend(env, func(cmd *cobra.Command, args []string) error {
 			return runBridgeNew(env, options)
 		}),

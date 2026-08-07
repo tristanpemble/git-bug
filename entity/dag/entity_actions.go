@@ -181,7 +181,7 @@ func merge[EntityT entity.Interface](def Definition, wrapper func(e *Entity) Ent
 	}
 
 	if fastForwardPossible {
-		err = repo.UpdateRef(localRef, remoteCommit)
+		err = repo.UpdateRefIfMatches(localRef, remoteCommit, localCommit)
 		if err != nil {
 			return entity.NewMergeError(err, id)
 		}
@@ -220,7 +220,7 @@ func merge[EntityT entity.Interface](def Definition, wrapper func(e *Entity) Ent
 	}
 
 	// finally update the ref
-	err = repo.UpdateRef(localRef, commitHash)
+	err = repo.UpdateRefIfMatches(localRef, commitHash, localCommit)
 	if err != nil {
 		return entity.NewMergeError(err, id)
 	}
@@ -250,7 +250,14 @@ func Remove(def Definition, repo repository.ClockedRepo, id entity.Id) error {
 	}
 
 	for _, ref = range matches {
-		err = repo.RemoveRef(ref)
+		oldHash, resolveErr := repo.ResolveRef(ref)
+		if errors.Is(resolveErr, repository.ErrNotFound) {
+			continue
+		}
+		if resolveErr != nil {
+			return resolveErr
+		}
+		err = repo.RemoveRefIfMatches(ref, oldHash)
 		if err != nil {
 			return err
 		}

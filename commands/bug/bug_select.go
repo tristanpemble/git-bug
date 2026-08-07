@@ -15,6 +15,13 @@ func ResolveSelected(repo *cache.RepoCache, args []string) (*cache.BugCache, []s
 	return _select.Resolve[*cache.BugCache](repo, bug.Typename, bug.Namespace, repo.Bugs(), args)
 }
 
+func ResolveMutationTarget(repo *cache.RepoCache, args []string, allowSelection bool) (*cache.BugCache, []string, error) {
+	if allowSelection {
+		return ResolveSelected(repo, args)
+	}
+	return _select.ResolveExplicit[*cache.BugCache](bug.Typename, repo.Bugs(), args)
+}
+
 func newBugSelectCommand(env *execenv.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "select BUG_ID",

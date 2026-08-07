@@ -70,7 +70,7 @@ func LoadBackend(env *Env) func(*cobra.Command, []string) error {
 
 		err = CacheBuildProgressBar(env, events)
 		if err != nil {
-			return err
+			return closeBackendAfterPreRunError(env, err)
 		}
 
 		cleaner := func(env *Env) interrupt.CleanerFunc {
@@ -100,13 +100,51 @@ func LoadBackendEnsureUser(env *Env) func(*cobra.Command, []string) error {
 			return err
 		}
 
-		_, err = identity.GetUserIdentity(env.Repo)
+		env.Actor, err = ResolveActingIdentity(cmd, env)
 		if err != nil {
+			return closeBackendAfterPreRunError(env, err)
+		}
+		if err := env.Backend.SetActor(env.Actor); err != nil {
+			return closeBackendAfterPreRunError(env, err)
+		}
+		return nil
+	}
+}
+
+// LoadBackendOptionalUser resolves an explicit identity override when one was
+// provided, while preserving commands that can bootstrap a repository default.
+func LoadBackendOptionalUser(env *Env) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := LoadBackend(env)(cmd, args); err != nil {
 			return err
 		}
 
+		actor, overridden, err := ResolveOptionalActingIdentity(cmd, env)
+		if err != nil {
+			return closeBackendAfterPreRunError(env, err)
+		}
+		if !overridden {
+			return nil
+		}
+		env.Actor = actor
+		if err := env.Backend.SetActor(actor); err != nil {
+			return closeBackendAfterPreRunError(env, err)
+		}
 		return nil
 	}
+}
+
+func closeBackendAfterPreRunError(env *Env, runErr error) error {
+	if env.Backend == nil {
+		return runErr
+	}
+	closeErr := env.Backend.Close()
+	env.Backend = nil
+	env.Actor = nil
+	if runErr != nil {
+		return runErr
+	}
+	return closeErr
 }
 
 // CloseBackend is a wrapper for a RunE function that will close the Backend properly
@@ -117,10 +155,12 @@ func CloseBackend(env *Env, runE func(cmd *cobra.Command, args []string) error) 
 		errRun := runE(cmd, args)
 
 		if env.Backend == nil {
-			return nil
+			env.Actor = nil
+			return errRun
 		}
 		err := env.Backend.Close()
 		env.Backend = nil
+		env.Actor = nil
 
 		// prioritize the RunE error
 		if errRun != nil {

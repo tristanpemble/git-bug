@@ -11,7 +11,7 @@ func newBugLabelRmCommand(env *execenv.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "rm [BUG_ID] LABEL...",
 		Short:   "Remove a label from a bug",
-		PreRunE: execenv.LoadBackend(env),
+		PreRunE: execenv.LoadBackendEnsureUser(env),
 		RunE: execenv.CloseBackend(env, func(cmd *cobra.Command, args []string) error {
 			return runBugLabelRm(env, args)
 		}),
@@ -22,7 +22,7 @@ func newBugLabelRmCommand(env *execenv.Env) *cobra.Command {
 }
 
 func runBugLabelRm(env *execenv.Env, args []string) error {
-	b, cleanArgs, err := ResolveSelected(env.Backend, args)
+	b, cleanArgs, err := ResolveMutationTarget(env.Backend, args, env.In.IsTerminal())
 	if err != nil {
 		return err
 	}

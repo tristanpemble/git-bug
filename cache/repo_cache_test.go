@@ -160,21 +160,20 @@ func TestCache(t *testing.T) {
 		require.Empty(t, cache.identities.cached)
 		require.Empty(t, cache.identities.excerpts)
 
-		// Reload, only excerpt are loaded, but as we need to load the identities used in the bugs
-		// to check the signatures, we also load the identity used above
+		// Reload from Git objects into a fresh process-local cache.
 		cache, err = NewRepoCacheNoEvents(repo)
 		require.NoError(t, err)
 		require.NoError(t, cache.registerObserver("repotest", identity.Typename, &obsIdentity))
 		require.NoError(t, cache.registerObserver("repotest", bug.Typename, &obsBug))
 
-		require.Len(t, cache.bugs.cached, 0)
+		require.Len(t, cache.bugs.cached, 2)
 		require.Len(t, cache.bugs.excerpts, 2)
-		require.Len(t, cache.identities.cached, 0)
+		require.Len(t, cache.identities.cached, 2)
 		require.Len(t, cache.identities.excerpts, 2)
 		require.Equal(t, uint64(2), indexCount(t, identity.Namespace))
 		require.Equal(t, uint64(2), indexCount(t, bug.Namespace))
 
-		// Resolving load from the disk
+		// Resolving uses the rebuilt process-local cache.
 		_, err = cache.Identities().Resolve(iden1.Id())
 		require.NoError(t, err)
 		_, err = cache.Identities().ResolveExcerpt(iden1.Id())
@@ -189,9 +188,9 @@ func TestCache(t *testing.T) {
 		_, err = cache.Bugs().ResolvePrefix(bug1.Id().String()[:10])
 		require.NoError(t, err)
 
-		require.Len(t, cache.bugs.cached, 1)
+		require.Len(t, cache.bugs.cached, 2)
 		require.Len(t, cache.bugs.excerpts, 2)
-		require.Len(t, cache.identities.cached, 1)
+		require.Len(t, cache.identities.cached, 2)
 		require.Len(t, cache.identities.excerpts, 2)
 		require.Equal(t, uint64(2), indexCount(t, identity.Namespace))
 		require.Equal(t, uint64(2), indexCount(t, bug.Namespace))
@@ -205,9 +204,9 @@ func TestCache(t *testing.T) {
 		require.NoError(t, err)
 		assertOberserverEvent(obsIdentity, 2, 0, 1)
 		assertOberserverEvent(obsBug, 2, 1, 1)
-		require.Len(t, cache.bugs.cached, 0)
+		require.Len(t, cache.bugs.cached, 1)
 		require.Len(t, cache.bugs.excerpts, 1)
-		require.Len(t, cache.identities.cached, 0)
+		require.Len(t, cache.identities.cached, 1)
 		require.Len(t, cache.identities.excerpts, 1)
 		require.Equal(t, uint64(1), indexCount(t, identity.Namespace))
 		require.Equal(t, uint64(1), indexCount(t, bug.Namespace))

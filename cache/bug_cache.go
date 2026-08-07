@@ -22,13 +22,13 @@ type BugCache struct {
 	CachedEntityBase[*bug.Snapshot, bug.Operation]
 }
 
-func NewBugCache(b *bug.Bug, repo repository.ClockedRepo, getUserIdentity getUserIdentityFunc, entityUpdated func(id entity.Id) error) *BugCache {
+func NewBugCache(b *bug.Bug, repo repository.ClockedRepo, getActor getActorFunc, entityUpdated func(id entity.Id) error) *BugCache {
 	return &BugCache{
 		CachedEntityBase: CachedEntityBase[*bug.Snapshot, bug.Operation]{
-			repo:            repo,
-			entityUpdated:   entityUpdated,
-			getUserIdentity: getUserIdentity,
-			entity:          &withSnapshot[*bug.Snapshot, bug.Operation]{Interface: b},
+			repo:          repo,
+			entityUpdated: entityUpdated,
+			getActor:      getActor,
+			entity:        &withSnapshot[*bug.Snapshot, bug.Operation]{Interface: b},
 		},
 	}
 }
@@ -38,7 +38,7 @@ func (c *BugCache) AddComment(message string) (entity.CombinedId, *bug.AddCommen
 }
 
 func (c *BugCache) AddCommentWithFiles(message string, files []repository.Hash) (entity.CombinedId, *bug.AddCommentOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return entity.UnsetCombinedId, nil, err
 	}
@@ -57,7 +57,7 @@ func (c *BugCache) AddCommentRaw(author identity.Interface, unixTime int64, mess
 }
 
 func (c *BugCache) ChangeLabels(added []string, removed []string) ([]bug.LabelChangeResult, *bug.LabelChangeOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -76,7 +76,7 @@ func (c *BugCache) ChangeLabelsRaw(author identity.Interface, unixTime int64, ad
 }
 
 func (c *BugCache) ForceChangeLabels(added []string, removed []string) (*bug.LabelChangeOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (c *BugCache) ForceChangeLabelsRaw(author identity.Interface, unixTime int6
 }
 
 func (c *BugCache) Open() (*bug.SetStatusOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (c *BugCache) OpenRaw(author identity.Interface, unixTime int64, metadata m
 }
 
 func (c *BugCache) Close() (*bug.SetStatusOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (c *BugCache) CloseRaw(author identity.Interface, unixTime int64, metadata 
 }
 
 func (c *BugCache) SetTitle(title string) (*bug.SetTitleOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (c *BugCache) SetTitleRaw(author identity.Interface, unixTime int64, title 
 
 // EditCreateComment is a convenience function to edit the body of a bug (the first comment)
 func (c *BugCache) EditCreateComment(body string) (entity.CombinedId, *bug.EditCommentOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return entity.UnsetCombinedId, nil, err
 	}
@@ -173,7 +173,7 @@ func (c *BugCache) EditCreateCommentRaw(author identity.Interface, unixTime int6
 }
 
 func (c *BugCache) EditComment(target entity.CombinedId, message string) (*bug.EditCommentOperation, error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func (c *BugCache) EditCommentRaw(author identity.Interface, unixTime int64, tar
 }
 
 func (c *BugCache) SetMetadata(target entity.Id, newMetadata map[string]string) (*dag.SetMetadataOperation[*bug.Snapshot], error) {
-	author, err := c.getUserIdentity()
+	author, err := c.getActor()
 	if err != nil {
 		return nil, err
 	}

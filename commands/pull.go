@@ -15,7 +15,7 @@ func newPullCommand(env *execenv.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "pull [REMOTE]",
 		Short:   "Pull updates from a git remote",
-		PreRunE: execenv.LoadBackend(env),
+		PreRunE: execenv.LoadBackendEnsureUser(env),
 		RunE: execenv.CloseBackend(env, func(cmd *cobra.Command, args []string) error {
 			return runPull(env, args)
 		}),

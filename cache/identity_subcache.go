@@ -12,7 +12,7 @@ type RepoCacheIdentity struct {
 
 func NewRepoCacheIdentity(repo repository.ClockedRepo,
 	resolvers func() entity.Resolvers,
-	getUserIdentity getUserIdentityFunc) *RepoCacheIdentity {
+	getActor getActorFunc) *RepoCacheIdentity {
 
 	makeCached := func(i *identity.Identity, entityUpdated func(id entity.Id) error) *IdentityCache {
 		return NewIdentityCache(i, repo, entityUpdated)
@@ -45,10 +45,10 @@ func NewRepoCacheIdentity(repo repository.ClockedRepo,
 	}
 
 	sc := NewSubCache[*identity.Identity, *IdentityExcerpt, *IdentityCache](
-		repo, resolvers, getUserIdentity,
+		repo, resolvers, getActor,
 		makeCached, NewIdentityExcerpt, makeIndex, actions,
 		identity.Typename, identity.Namespace,
-		formatVersion, defaultMaxLoadedBugs,
+		defaultMaxLoadedBugs,
 	)
 
 	return &RepoCacheIdentity{SubCache: sc}

@@ -22,6 +22,10 @@ git-bug use git objects to store the bug tracking separated from the files
 history. As bugs are regular git objects, they can be pushed and pulled from/to
 the same git remote you are already using to collaborate with other people.
 
+Mutation commands resolve their acting identity in this order: --identity,
+GIT_BUG_IDENTITY, then the repository default configured by "git bug user adopt".
+Read-only commands do not require an identity.
+
 `,
 
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -56,6 +60,8 @@ the same git remote you are already using to collaborate with other people.
 	}
 
 	env := execenv.NewEnv(ctx)
+	cmd.PersistentFlags().StringVar(&env.IdentityOverride, "identity", "",
+		"Act as the identity ID or unambiguous prefix for this command")
 
 	addCmdWithGroup(bugcmd.NewBugCommand(env), entityGroup)
 	addCmdWithGroup(usercmd.NewUserCommand(env), entityGroup)

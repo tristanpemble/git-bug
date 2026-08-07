@@ -22,6 +22,9 @@ func TestSelect(t *testing.T) {
 	resolve := func(args []string) (*cache.BugCache, []string, error) {
 		return Resolve[*cache.BugCache](backend, typename, namespace, backend.Bugs(), args)
 	}
+	resolveExplicit := func(args []string) (*cache.BugCache, []string, error) {
+		return ResolveExplicit[*cache.BugCache](typename, backend.Bugs(), args)
+	}
 
 	_, _, err = resolve([]string{})
 	require.True(t, IsErrNoValidId(err))
@@ -76,6 +79,16 @@ func TestSelect(t *testing.T) {
 	b7, _, err := resolve([]string{b2.Id().String()})
 	require.NoError(t, err)
 	require.Equal(t, b2.Id(), b7.Id())
+
+	// Automated mutations must never fall back to shared interactive state.
+	_, _, err = resolveExplicit(nil)
+	require.True(t, IsErrNoValidId(err))
+	_, _, err = resolveExplicit([]string{"not-an-id"})
+	require.True(t, IsErrNoValidId(err))
+	b8, remaining, err := resolveExplicit([]string{b2.Id().Human(), "remaining"})
+	require.NoError(t, err)
+	require.Equal(t, b2.Id(), b8.Id())
+	require.Equal(t, []string{"remaining"}, remaining)
 
 	err = Clear(backend, namespace)
 	require.NoError(t, err)
