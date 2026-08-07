@@ -7,8 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/git-bug/git-bug/bridge"
-	"github.com/git-bug/git-bug/bridge/core/auth"
 	"github.com/git-bug/git-bug/commands/execenv"
 )
 
@@ -16,59 +14,6 @@ type ValidArgsFunction func(cmd *cobra.Command, args []string, toComplete string
 
 func HandleError(err error) (completions []string, directives cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveError
-}
-
-func Bridge(env *execenv.Env) ValidArgsFunction {
-	return func(cmd *cobra.Command, args []string, toComplete string) (completions []string, directives cobra.ShellCompDirective) {
-		if err := execenv.LoadBackend(env)(cmd, args); err != nil {
-			return HandleError(err)
-		}
-		defer func() {
-			_ = env.Backend.Close()
-		}()
-
-		bridges, err := bridge.ConfiguredBridges(env.Backend)
-		if err != nil {
-			return HandleError(err)
-		}
-
-		completions = make([]string, len(bridges))
-		for i, bridge := range bridges {
-			completions[i] = bridge + "\t" + "Bridge"
-		}
-
-		return completions, cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func BridgeAuth(env *execenv.Env) ValidArgsFunction {
-	return func(cmd *cobra.Command, args []string, toComplete string) (completions []string, directives cobra.ShellCompDirective) {
-		if err := execenv.LoadBackend(env)(cmd, args); err != nil {
-			return HandleError(err)
-		}
-		defer func() {
-			_ = env.Backend.Close()
-		}()
-
-		creds, err := auth.List(env.Backend)
-		if err != nil {
-			return HandleError(err)
-		}
-
-		completions = make([]string, len(creds))
-		for i, cred := range creds {
-			meta := make([]string, 0, len(cred.Metadata()))
-			for k, v := range cred.Metadata() {
-				meta = append(meta, k+":"+v)
-			}
-			sort.Strings(meta)
-			metaFmt := strings.Join(meta, ",")
-
-			completions[i] = cred.ID().Human() + "\t" + cred.Target() + " " + string(cred.Kind()) + " " + metaFmt
-		}
-
-		return completions, cobra.ShellCompDirectiveNoFileComp
-	}
 }
 
 func From(choices []string) ValidArgsFunction {

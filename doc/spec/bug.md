@@ -34,7 +34,7 @@ Operation types are encoded as integers in the `type` field of each operation JS
 | `SetStatusOp`   | 4       | Change the bug status                                                   |
 | `LabelChangeOp` | 5       | Add or remove labels                                                    |
 | `EditCommentOp` | 6       | Edit an existing comment                                                |
-| `NoOpOp`        | 7       | No-op (used by bridges to store metadata)                               |
+| `NoOpOp`        | 7       | No-op that can carry metadata                                           |
 | `SetMetadataOp` | 8       | Annotate another operation with metadata                                |
 
 A reader **must** accept packs containing type values not listed above (see
@@ -213,8 +213,8 @@ Example:
 
 ### 5.7 NoOpOperation (type 7)
 
-No entity-specific fields beyond the common ones. Does not change the bug state. Used by
-bridges to record an event in the history without modifying the snapshot.
+No entity-specific fields beyond the common ones. Does not change the bug state. Tools can
+use it to record metadata in the history without modifying the snapshot.
 
 See [dag-entity.md §6.6](dag-entity.md#66-noopoperation-generic-pattern).
 
@@ -238,42 +238,25 @@ that arrives in operation order persists permanently and cannot be overridden.
 ## 6. Operation metadata
 
 The `metadata` field present on every operation (see
-[dag-entity.md §6.1](dag-entity.md#61-common-fields-present-in-every-operation)) is used
-primarily by bridges to record the correspondence between a git-bug operation and its
-counterpart on a remote issue tracker.
+[dag-entity.md §6.1](dag-entity.md#61-common-fields-present-in-every-operation)) stores
+arbitrary key/value annotations. The core data model does not assign application semantics
+to those keys.
 
-### 6.1 Well-known keys
+### 6.1 Compatibility
 
-| Key                 | Set by           | Applies to        | Description                                                                 |
-|---------------------|------------------|-------------------|-----------------------------------------------------------------------------|
-| `origin`            | all bridges      | `CreateOperation` | Name of the bridge that imported this bug (e.g. `github`, `gitlab`, `jira`) |
-| `github-id`         | GitHub bridge    | any operation     | GitHub node ID of the corresponding issue, comment, or event                |
-| `github-url`        | GitHub bridge    | `CreateOperation` | URL of the corresponding GitHub issue                                       |
-| `gitlab-id`         | GitLab bridge    | any operation     | GitLab internal ID of the corresponding issue or note                       |
-| `gitlab-url`        | GitLab bridge    | `CreateOperation` | URL of the corresponding GitLab issue                                       |
-| `gitlab-base-url`   | GitLab bridge    | `CreateOperation` | Base URL of the GitLab instance (for self-hosted)                           |
-| `gitlab-project-id` | GitLab bridge    | `CreateOperation` | GitLab project ID                                                           |
-| `jira-id`           | Jira bridge      | any operation     | Jira internal ID of the issue or comment                                    |
-| `jira-key`          | Jira bridge      | `CreateOperation` | Jira issue key (e.g. `PROJECT-123`)                                         |
-| `jira-base-url`     | Jira bridge      | `CreateOperation` | Base URL of the Jira instance                                               |
-| `jira-project`      | Jira bridge      | `CreateOperation` | Jira project key                                                            |
-| `jira-export-time`  | Jira bridge      | any operation     | Timestamp of the last export of this operation to Jira                      |
-| `launchpad-id`      | Launchpad bridge | `CreateOperation` | Launchpad bug ID                                                            |
-
-The `origin` key on the `CreateOperation` is the standard way to identify which bridge
-imported a bug. It is used during re-import to match a remote issue back to an existing
-local bug.
+Repositories written by older integrations can contain application-specific metadata keys.
+Readers must continue to accept and preserve those opaque values even when no current
+command interprets them.
 
 ### 6.2 Inline metadata vs. SetMetadataOperation
 
 Metadata can be attached to an operation in two ways:
 
-- **Inline** (`metadata` field in the operation JSON): set at import time, included in the
-  operation's serialized bytes, and therefore part of the operation's ID. This is the
-  normal case for bridge import data.
+- **Inline** (`metadata` field in the operation JSON): included in the operation's
+  serialized bytes and therefore part of the operation's ID.
 - **Via `SetMetadataOperation`** (type 8): added after the fact, without changing the target
-  operation's ID. Used when the metadata is only available after the operation has been
-  committed — for example, a remote ID returned by an issue tracker after export.
+  operation's ID. This is useful when an annotation is only available after the operation
+  has been committed.
 
 
 ## 7. Snapshot semantics

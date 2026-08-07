@@ -51,8 +51,8 @@ Each `version` blob is a JSON object with the following fields:
 |----------------|--------------|-------------------------|----------|-------------------------------------------------------------------------------------------------------------|
 | Format version | `version`    | integer                 | yes      | Must equal 2                                                                                                |
 | Name           | `name`       | string                  | no       | Display name of the user                                                                                    |
-| Email          | `email`      | string                  | no       | Email address (from git config or bridge)                                                                   |
-| Login          | `login`      | string                  | no       | Username from a bridge (e.g. GitHub login)                                                                  |
+| Email          | `email`      | string                  | no       | Optional contact address                                                                                    |
+| Login          | `login`      | string                  | no       | Optional account name                                                                                       |
 | Avatar URL     | `avatar_url` | string                  | no       | URL to a profile picture                                                                                    |
 | Public keys    | `pub_keys`   | array of key objects    | no       | PGP public keys valid from this version onward                                                              |
 | Lamport times  | `times`      | object (string→integer) | yes      | Snapshot of all known clock values at the time this version was created (see [§4.1](#41-lamport-times-map)) |
@@ -128,26 +128,13 @@ no such check is performed on read.
 
 ### 4.3 Metadata
 
-The `metadata` field is an arbitrary string key/value store, used primarily by bridges to
-record the user's identity on a remote platform. Keys follow the convention
-`<bridge-name>-<field>`.
-
-Well-known keys set by the built-in bridges:
-
-| Key               | Set by           | Description                                         |
-|-------------------|------------------|-----------------------------------------------------|
-| `github-login`    | GitHub bridge    | The user's GitHub username                          |
-| `gitlab-login`    | GitLab bridge    | The user's GitLab username                          |
-| `jira-login`      | Jira bridge      | The user's Jira username                            |
-| `jira-user`       | Jira bridge      | The user's Jira user key (internal Jira identifier) |
-| `launchpad-login` | Launchpad bridge | The user's Launchpad username                       |
-
-Third parties adding new bridge-specific keys should prefix them with their bridge name to
-avoid collisions.
+The `metadata` field is an arbitrary string key/value store. The core data model does not
+assign semantics to its keys. Readers must continue to accept and preserve opaque keys
+written by older integrations.
 
 ### 4.4 Example version blobs
 
-Minimal version (no keys, no bridge fields):
+Minimal version (no keys or optional metadata):
 ```json
 {
   "version": 2,
@@ -159,7 +146,7 @@ Minimal version (no keys, no bridge fields):
 }
 ```
 
-Version with a public key and a bridge login:
+Version with a public key and login:
 ```json
 {
   "version": 2,

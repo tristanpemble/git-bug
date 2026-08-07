@@ -9,12 +9,9 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/git-bug/git-bug/bridge/core/auth"
-	"github.com/git-bug/git-bug/util/colors"
 	"github.com/git-bug/git-bug/util/interrupt"
 )
 
@@ -197,69 +194,4 @@ func PromptURLWithRemote(prompt, name string, validRemotes []string, validators 
 	}
 
 	return Prompt(prompt, name, validators...)
-}
-
-func PromptCredential(target, name string, credentials []auth.Credential, choices []string) (auth.Credential, int, error) {
-	if len(credentials) == 0 && len(choices) == 0 {
-		return nil, 0, fmt.Errorf("no possible choice")
-	}
-	if len(credentials) == 0 && len(choices) == 1 {
-		return nil, 0, nil
-	}
-
-	sort.Sort(auth.ById(credentials))
-
-	for {
-		_, _ = fmt.Fprintln(os.Stderr)
-
-		offset := 0
-		for i, choice := range choices {
-			_, _ = fmt.Fprintf(os.Stderr, "[%d]: %s\n", i+1, choice)
-			offset++
-		}
-
-		if len(credentials) > 0 {
-			_, _ = fmt.Fprintln(os.Stderr)
-			_, _ = fmt.Fprintf(os.Stderr, "Existing %s for %s:\n", name, target)
-
-			for i, cred := range credentials {
-				meta := make([]string, 0, len(cred.Metadata()))
-				for k, v := range cred.Metadata() {
-					meta = append(meta, k+":"+v)
-				}
-				sort.Strings(meta)
-				metaFmt := strings.Join(meta, ",")
-
-				fmt.Printf("[%d]: %s => (%s) (%s)\n",
-					i+1+offset,
-					colors.Cyan(cred.ID().Human()),
-					metaFmt,
-					cred.CreateTime().Format(time.RFC822),
-				)
-			}
-		}
-
-		_, _ = fmt.Fprintln(os.Stderr)
-		_, _ = fmt.Fprintf(os.Stderr, "Select option: ")
-
-		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-		_, _ = fmt.Fprintln(os.Stderr)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		line = strings.TrimSpace(line)
-		index, err := strconv.Atoi(line)
-		if err != nil || index < 1 || index > len(choices)+len(credentials) {
-			_, _ = fmt.Fprintln(os.Stderr, "invalid input")
-			continue
-		}
-
-		switch {
-		case index <= len(choices):
-			return nil, index - 1, nil
-		default:
-			return credentials[index-len(choices)-1], 0, nil
-		}
-	}
 }

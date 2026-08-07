@@ -98,7 +98,7 @@
       }
     },
     {
-      "description": "Pack with a SetMetadataOperation annotating the CreateOperation with a bridge reference",
+      "description": "Pack with a SetMetadataOperation annotating the CreateOperation with an external reference",
       "ops_blob": {
         "author": {"id": "b29b7b2e0acb0a91dcf3c6c9d8e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7"},
         "ops": [
@@ -108,8 +108,8 @@
             "nonce": "GGGGGGGGGGGGGGGGGGGGGGGGGGGG",
             "target": "<ID of the CreateOperation>",
             "new_metadata": {
-              "github-url": "https://github.com/example/repo/issues/42",
-              "github-id": "42"
+              "source-url": "https://tracker.example.test/issues/42",
+              "source-id": "42"
             }
           }
         ]

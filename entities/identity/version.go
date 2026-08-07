@@ -22,8 +22,8 @@ const formatVersion = 2
 // version is a complete set of information about an Identity at a point in time.
 type version struct {
 	name      string
-	email     string // as defined in git or from a bridge when importing the identity
-	login     string // from a bridge when importing the identity
+	email     string // optional contact address
+	login     string // optional account name
 	avatarURL string
 
 	// The lamport times of the other entities at which this version become effective

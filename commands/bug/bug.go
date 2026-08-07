@@ -72,7 +72,7 @@ git bug status:open --by creation "foo bar" baz
 	flags.StringSliceVarP(&options.authorQuery, "author", "a", nil,
 		"Filter by author")
 	flags.StringSliceVarP(&options.metadataQuery, "metadata", "m", nil,
-		"Filter by metadata. Example: github-url=URL")
+		"Filter by metadata. Example: key=value")
 	cmd.RegisterFlagCompletionFunc("author", completion.UserForQuery(env))
 	flags.StringSliceVarP(&options.participantQuery, "participant", "p", nil,
 		"Filter by participant")
@@ -292,12 +292,7 @@ func bugsOrgmodeFormatter(env *execenv.Env, excerpts []*cache.BugExcerpt) error 
 	for _, b := range excerpts {
 		status := strings.ToUpper(b.Status.String())
 
-		var title string
-		if link, ok := b.CreateMetadata["github-url"]; ok {
-			title = fmt.Sprintf("[[%s][%s]]", link, b.Title)
-		} else {
-			title = b.Title
-		}
+		title := b.Title
 
 		author, err := env.Backend.Identities().ResolveExcerpt(b.AuthorId)
 		if err != nil {

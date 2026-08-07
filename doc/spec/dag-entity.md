@@ -112,7 +112,7 @@ Every operation is a JSON object with the following fields:
 | Type      | `type`      | integer                | yes      | Operation type identifier; values are entity-specific |
 | Timestamp | `timestamp` | integer                | yes      | Unix timestamp (seconds since epoch) for display only |
 | Nonce     | `nonce`     | base64 string          | yes      | Random bytes (20–64 bytes) to ensure ID uniqueness    |
-| Metadata  | `metadata`  | object (string→string) | no       | Arbitrary key/value pairs (bridge metadata, etc.)     |
+| Metadata  | `metadata`  | object (string→string) | no       | Arbitrary key/value pairs                             |
 
 `author` and `id` are **not** stored in the operation JSON. The author comes from the
 enclosing pack; the ID is derived from the serialized bytes (see [§7](#7-id-derivation)).
@@ -160,9 +160,9 @@ a later `SetMetadataOperation`.
 ### 6.6 NoOpOperation (generic pattern)
 
 `NoOpOperation` is a generic operation type defined in the DAG layer. It carries no
-entity-specific fields beyond the common ones and does not change the snapshot. It is used
-by bridges and other tools to store metadata in the history without affecting the entity
-state. Its concrete `type` integer is assigned by each entity.
+entity-specific fields beyond the common ones and does not change the snapshot. Tools can
+use it to store metadata in the history without affecting the entity state. Its concrete
+`type` integer is assigned by each entity.
 
 
 ## 7. ID derivation

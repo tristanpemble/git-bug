@@ -7,9 +7,9 @@ comment/documentation scattered in the codebase.
 ## Overview
 
 ```
-    |   .-------------------..------------------..------------------.   |
-    |   |     commands      ||      bridge      ||      termui      |   |
-    |   '-------------------''------------------''------------------'   |
+    |   .-----------------------------..---------------------------.   |
+    |   |          commands           ||          termui           |   |
+    |   '-----------------------------''---------------------------'   |
     |   .----------------------------------------------------------.   |
     |   |                          cache                           |   |
     |   |----------------------------------------------------------|   |
@@ -119,8 +119,3 @@ automatically generated.
 
 The package `termui` contains the interactive terminal user interface,
 implemented with the [gocui](https://github.com/jroimartin/gocui) library.
-
-## bridge
-
-The package `bridge` contains the various bridge implementation with other
-external bug trackers.

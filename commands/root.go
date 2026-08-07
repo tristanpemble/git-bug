@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/git-bug/git-bug/commands/bridge"
 	"github.com/git-bug/git-bug/commands/bug"
 	"github.com/git-bug/git-bug/commands/execenv"
 	"github.com/git-bug/git-bug/commands/user"
@@ -71,8 +70,6 @@ Read-only commands do not require an identity.
 
 	addCmdWithGroup(newPullCommand(env), remoteGroup)
 	addCmdWithGroup(newPushCommand(env), remoteGroup)
-	addCmdWithGroup(bridgecmd.NewBridgeCommand(env), remoteGroup)
-
 	cmd.AddCommand(newVersionCommand(env))
 	cmd.AddCommand(newWipeCommand(env))
 

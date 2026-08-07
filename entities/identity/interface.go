@@ -24,9 +24,7 @@ type Interface interface {
 
 	// Login return the last version of the login
 	// Can be empty.
-	// Warning: this login can be defined when importing from a bridge but should *not* be
-	// used to identify an identity as multiple bridge with different login can map to the same
-	// identity. Use the metadata system for that usage instead.
+	// Warning: this login is display metadata and should not be used in place of the identity ID.
 	Login() string
 
 	// AvatarUrl return the last version of the Avatar URL

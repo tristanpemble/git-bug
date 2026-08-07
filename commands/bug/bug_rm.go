@@ -12,7 +12,7 @@ func newBugRmCommand(env *execenv.Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "rm BUG_ID",
 		Short:   "Remove an existing bug",
-		Long:    "Remove an existing bug in the local repository. Note removing bugs that were imported from bridges will not remove the bug on the remote, and will only remove the local copy of the bug.",
+		Long:    "Remove an existing bug from the local repository.",
 		PreRunE: execenv.LoadBackend(env),
 		RunE: execenv.CloseBackend(env, func(cmd *cobra.Command, args []string) error {
 			return runBugRm(env, args)

@@ -9,8 +9,7 @@ var _ Operation = &NoOpOperation[Snapshot]{}
 var _ OperationDoesntChangeSnapshot = &NoOpOperation[Snapshot]{}
 
 // NoOpOperation is an operation that does not change the entity state. It can
-// however be used to store arbitrary metadata in the entity history, for example
-// to support a bridge feature.
+// however be used by tools to store arbitrary metadata in the entity history.
 type NoOpOperation[SnapT Snapshot] struct {
 	OpBase
 }
